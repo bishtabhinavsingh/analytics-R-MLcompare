@@ -1,0 +1,294 @@
+---
+title: "Comparing ML models"
+author: "Abhinav Bisht"
+date: "22/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(keras)
+library(tidyverse)
+library(tensorflow)
+
+```
+
+## Overall objective
+
+Train certain deep learning models (Simple RNN, LSTM, bidirectional LSTM, GRU, bidirectional GRU, 1D Covnet) based on a given dataset (imdb rds file), using given x_train and y_train code. Objective is to:
+
+  - train these models with a minimum of 60% accuracy
+  - save all training history files, all models, x_test and y_test and load them to the R-markdown
+  - plot all history files
+  - evaluate all models
+  - display true positive, true negative, false positive and false negative values for each model
+  - discuss models based on above parameters
+
+## Objective 1: Read all output files from Step 3
+> Assuming all files have been extracted to the same folder that contains the R-markdown file.
+
+```{r loading}
+
+#Loading x_test, y_test
+x_test <- read_rds("x_test.rds")
+y_test <- read_rds("y_test.rds")
+Test_set <- ifelse(y_test==0, "Positive Reviews", "Negative Reviews") 
+t1 <- as.data.frame(table(Test_set))
+
+
+#Load all model and their history files
+for (i in c("_RNN", "_LSTM", "_bLSTM", "_GRU", "_bGRU", "_1d_cov")){
+  his_name <- paste0("history",i,".rds")
+  his <- paste0("history",i)
+  mod_name <- paste0("model",i,".h5")
+  mod <- paste0("model",i)
+  
+  assign(his, readRDS(str_c(his_name)))
+  assign(mod, load_model_hdf5(str_c(mod_name)))
+}
+
+
+```
+
+
+## Objective 2: Show statistics for x_test and y_train
+
+This includes:
+
+  - Number of reviews in the test set
+  - Number of positive reviews in the test set
+  - Number of negative reviews in the test set
+
+```{r}
+
+knitr::kable(t1, "simple")
+print(paste0("Total Number of reviews in the test set: ", length(Test_set)))
+
+```
+
+
+## Objective 3: Show model summary, evaluate performance
+
+
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+Summary tables{.tabset .tabset-fade}
+-------------------------------------
+   
+### Simple RNN
+
+```{r}
+
+summary(model_RNN)
+model_RNN %>% evaluate(x_test, y_test) -> eval_RNN  #evaluated performance
+
+```   
+
+### LSTM
+
+```{r}
+
+summary(model_LSTM)
+model_LSTM %>% evaluate(x_test, y_test) -> eval_LSTM #evaluated performance
+
+```   
+
+### bi-directional LSTM
+
+```{r}
+
+summary(model_bLSTM)
+model_bLSTM %>% evaluate(x_test, y_test) -> eval_bLSTM #evaluated performance
+
+```   
+
+### GRU
+
+```{r}
+
+summary(model_GRU)
+model_GRU %>% evaluate(x_test, y_test) -> eval_GRU #evaluated performance
+
+
+```   
+
+### bi-directional GRU
+
+```{r}
+
+summary(model_bGRU)
+model_bGRU %>% evaluate(x_test, y_test) -> eval_bGRU #evaluated performance
+
+```   
+
+### 1D-Covnet
+```{r}
+
+summary(model_1d_cov)
+model_1d_cov %>% evaluate(x_test, y_test) -> eval_1d_cov #evaluated performance
+
+```   
+
+## Objective 4: Plot training history
+
+Graphs  {.tabset .tabset-fade}
+-------------------------------------
+### Simple RNN
+
+
+```{r}
+
+plot(history_RNN)
+
+```   
+
+### LSTM
+
+```{r}
+
+plot(history_LSTM)
+
+```   
+
+### bi-directional LSTM
+
+```{r}
+
+plot(history_bLSTM)
+
+```   
+
+### GRU
+
+```{r}
+
+plot(history_GRU)
+
+```   
+
+### bi-directional GRU
+
+```{r}
+
+plot(history_bGRU)
+
+```   
+
+### 1D-Covnet
+```{r}
+
+plot(history_1d_cov)
+
+```   
+
+## Objective 5: True Positive, True Negative, False Positive, False Negative counts and evaluation including overall model accuracy
+
+-   if `predicted = 0` and `actual = 0` then that is a True Negative
+-   if `predicted = 1` and `actual = 0` then that is a False Positive
+-   if `predicted = 0` and `actual = 1` then that is a False Negative
+-   if `predicted = 1` and `actual = 1` then that is a True Positive
+
+```{r creating table for all models}
+
+model_RNN %>% predict(x_test) -> predicted_RNN
+model_LSTM %>% predict(x_test) -> predicted_LSTM
+model_bLSTM %>% predict(x_test) -> predicted_bLSTM
+model_GRU %>% predict(x_test) -> predicted_GRU
+model_bGRU %>% predict(x_test) -> predicted_bGRU
+model_1d_cov %>% predict(x_test) -> predicted_1d_cov
+
+
+for (i in c("RNN", "LSTM", "bLSTM", "GRU", "bGRU", "1d_cov")){
+    current_pred_name <- paste0("predicted_",i)
+    current_eval_name <- get(paste0("eval_",i))
+   
+    head <- c(i)
+
+    current_pred_name <- ifelse(get(current_pred_name) < 0.85, 0, 1)
+  
+    result <- data.frame("predicted"=as.integer(current_pred_name[,1]), "actuals"=as.integer(y_test))
+    result <- as.data.frame(table(result))
+           
+    row.names(result)[1] <- "Number of True Negative"
+    row.names(result)[2] <- "Number of False Positive"
+    row.names(result)[3] <- "Number of False Negative"
+    row.names(result)[4] <- "Number of True Positive"
+    
+    result <- subset(result, select=-c(predicted, actuals))
+    names(result) <- NULL
+   
+    res <- rbind(head, current_eval_name[2], result)
+    row.names(res)[1] <- "Model Name"
+    row.names(res)[2] <- "Model Accuracy"
+    assign(paste0("result_",i), res)
+    
+}
+
+```   
+
+
+Tables showing n_tp, n_tn, n_fp and n_fn for all models {.tabset .tabset-fade}
+-------------------------------------
+### Simple RNN
+
+```{r}
+
+result_RNN
+
+
+```   
+### LSTM
+
+```{r}
+
+result_LSTM
+
+```   
+
+### bi-directional LSTM
+
+```{r}
+
+result_bLSTM
+
+```   
+
+### GRU
+
+```{r}
+
+result_GRU
+
+```   
+
+### bi-directional GRU
+
+```{r}
+
+result_bGRU
+
+```   
+
+### 1D-Covnet
+```{r}
+
+result_1d_cov
+
+```   
+
+## Objective 6: Discussion
+
+On observing the accuracy alone it is clear that the best models for the given dataset and configuration are LSTM, Bi-directional LSTM and 1D-covnet (in that order). However, in practical applications accuracy may not be the only parameter concerned. Among the given models, on measuring the time taken to compute. We observe that the aforementioned models are not just efficient in their predictions but also the total computing time taken while training, however based on this analysis one model clearly stands out 1D covnet for high accuracy and lowest compute time, in practical applications this model would be highly preferred for cost effectiveness. As more computing time would result in higher development times, more use of power and resources.
+
+```{r}
+
+df <- read_csv("time_t.csv")
+knitr::kable(df, "simple")
+
+```
+
+Please note that the `echo = True` parameter was added to the code chunk to print R code that generated the plot and rest of the functions. Student email ID: abisht1@student.gsu.edu
