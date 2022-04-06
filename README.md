@@ -27,6 +27,7 @@ This includes:
 ![Alt text](/artifacts/0.png)
 
 ## Objective 3: Display Models and History
+
 ![Alt text](/artifacts/1.png)
 ![Alt text](/artifacts/1a.png)
 
@@ -47,4 +48,8 @@ This includes:
 
 ## Objective 4: Compare Models
 ![Alt text](/artifacts/7.png)
+
+## Discussion:
+> On observing the accuracy alone it is clear that the best models for the given dataset and configuration are LSTM, Bi-directional LSTM and 1D-covnet (in that order). However, in practical applications accuracy may not be the only parameter concerned. Among the given models, on measuring the time taken to compute. We observe that the aforementioned models are not just efficient in their predictions but also the total computing time taken while training, however based on this analysis one model clearly stands out 1D covnet for high accuracy and lowest compute time, in practical applications this model would be highly preferred for cost effectiveness. As more computing time would result in higher development times, more use of power and resources.
+
 
